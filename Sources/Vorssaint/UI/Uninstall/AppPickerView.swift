@@ -24,6 +24,7 @@ struct AppPickerView: View {
     var loadApps: () -> [InstalledApps.InstalledApp] = { InstalledApps.installedApplications() }
     var onCancel: () -> Void
     var onSelect: (URL) -> Void
+    var onSelectApp: ((InstalledApps.InstalledApp) -> Void)? = nil
 
     init(compact: Bool = false,
          canBrowseApplications: Bool = false,
@@ -31,6 +32,7 @@ struct AppPickerView: View {
          keyboardSection: PanelSectionID? = nil,
          onCancel: @escaping () -> Void,
          onSelect: @escaping (URL) -> Void,
+         onSelectApp: ((InstalledApps.InstalledApp) -> Void)? = nil,
          loadApps: @escaping () -> [InstalledApps.InstalledApp] = { InstalledApps.installedApplications() }) {
         self.compact = compact
         self.canBrowseApplications = canBrowseApplications
@@ -38,6 +40,7 @@ struct AppPickerView: View {
         self.keyboardSection = keyboardSection
         self.onCancel = onCancel
         self.onSelect = onSelect
+        self.onSelectApp = onSelectApp
         self.loadApps = loadApps
     }
 
@@ -47,6 +50,7 @@ struct AppPickerView: View {
         return apps.filter { app in
             app.name.localizedCaseInsensitiveContains(trimmed)
                 || (app.bundleID?.localizedCaseInsensitiveContains(trimmed) ?? false)
+                || (app.identity?.localizedCaseInsensitiveContains(trimmed) ?? false)
         }
     }
 
@@ -130,6 +134,17 @@ struct AppPickerView: View {
                             .panelKeyboardRow(keyboardRow(for: app),
                                               actions: PanelRowActions(activate: { onSelect(app.url) }))
                             .id(app.url.path)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(apps) { app in
+                        Button {
+                            if let onSelectApp {
+                                onSelectApp(app)
+                            } else {
+                                onSelect(app.url)
+                            }
+                        } label: {
+                            AppPickerRow(app: app, compact: compact)
                         }
                     }
                     .padding(.vertical, 3)
@@ -178,14 +193,15 @@ private struct AppPickerRow: View {
                 .resizable()
                 .frame(width: compact ? 20 : 28, height: compact ? 20 : 28)
             VStack(alignment: .leading, spacing: 1) {
+                let location = app.identity.flatMap(InstalledApps.location(for:))
                 Text(app.name)
                     .font(.system(size: compact ? 11 : 13, weight: .medium))
                     .lineLimit(1)
-                Text(app.bundleID ?? app.url.path)
+                Text(location ?? app.bundleID ?? app.url.path)
                     .font(.system(size: compact ? 9 : 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(location == nil ? .middle : .head)
             }
             Spacer(minLength: 0)
         }

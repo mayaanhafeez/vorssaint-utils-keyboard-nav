@@ -1618,12 +1618,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let host = NSHostingController(rootView: UpdateHighlightsView(
             onFinish: { [weak self] in
                 guard let self else { return }
-                self.markUpdateHighlightsSeen()
-                self.updateHighlightsWindow?.close()
+                let previousWindow = self.updateHighlightsWindow
+                previousWindow?.close()
+                self.showSupportUpdateIntro()
+                if let previousWindow, let supportWindow = self.supportIntroWindow {
+                    supportWindow.setFrameOrigin(previousWindow.frame.origin)
+                    self.positionTourBesideSettings(supportWindow)
+                }
             }
         ))
         host.sizingOptions = .preferredContentSize
-        let window = NSWindow(contentViewController: host)
+        let window = NSPanel(contentViewController: host)
         window.title = L10n.shared.s.highlightsTitle
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
@@ -1631,6 +1636,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.isMovableByWindowBackground = true
+        window.isFloatingPanel = true
+        window.level = .floating
+        window.hidesOnDeactivate = false
         window.delegate = self
         centerIntroWindow(window)
         updateHighlightsWindow = window
@@ -1640,6 +1648,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             guard let self, let window, window === self.updateHighlightsWindow else { return }
             self.centerIntroWindow(window)
         }
+    }
+
+    func openSettingsFromHighlights() {
+        openSettingsWindow()
+        // Run after Settings has applied its own initial placement. Ordering the
+        // panel does not take keyboard focus away from the configuration controls.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let tour = self.updateHighlightsWindow, tour.isVisible else { return }
+            self.positionTourBesideSettings(tour)
+            tour.orderFront(nil)
+        }
+    }
+
+    private func positionTourBesideSettings(_ tour: NSWindow) {
+        guard let settings = settingsWindow, settings.isVisible else { return }
+        let visible = tour.screen?.visibleFrame ?? NSScreen.pointerVisibleFrame
+        let placement = SettingsWindowSupport.tourPlacement(
+            settingsSize: settings.frame.size, tourSize: tour.frame.size, visibleFrame: visible)
+        settings.setFrameOrigin(placement.settings.origin)
+        tour.setFrameOrigin(placement.tour.origin)
     }
 
     private func markUpdateHighlightsSeen() {
@@ -1721,7 +1749,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
         ))
         host.sizingOptions = .preferredContentSize
-        let window = NSWindow(contentViewController: host)
+        let window = NSPanel(contentViewController: host)
         window.title = L10n.shared.s.supportIntroTitle
         window.styleMask = [.titled, .fullSizeContentView]
         window.standardWindowButton(.closeButton)?.isHidden = true
@@ -1730,6 +1758,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.isMovableByWindowBackground = true
+        window.isFloatingPanel = true
+        window.level = .floating
+        window.hidesOnDeactivate = false
         window.delegate = self
         supportIntroCanClose = false
         centerIntroWindow(window)
@@ -1739,6 +1770,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         DispatchQueue.main.async { [weak self, weak window] in
             guard let self, let window, window === self.supportIntroWindow else { return }
             self.centerIntroWindow(window)
+            self.positionTourBesideSettings(window)
         }
     }
 
