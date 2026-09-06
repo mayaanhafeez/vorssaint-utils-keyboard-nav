@@ -126,25 +126,24 @@ struct AppPickerView: View {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(apps) { app in
                             Button {
-                                onSelect(app.url)
+                                if let onSelectApp {
+                                    onSelectApp(app)
+                                } else {
+                                    onSelect(app.url)
+                                }
                             } label: {
                                 AppPickerRow(app: app, compact: compact)
                             }
                             .buttonStyle(.plain)
                             .panelKeyboardRow(keyboardRow(for: app),
-                                              actions: PanelRowActions(activate: { onSelect(app.url) }))
+                                              actions: PanelRowActions(activate: {
+                                                  if let onSelectApp {
+                                                      onSelectApp(app)
+                                                  } else {
+                                                      onSelect(app.url)
+                                                  }
+                                              }))
                             .id(app.url.path)
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
-                    ForEach(apps) { app in
-                        Button {
-                            if let onSelectApp {
-                                onSelectApp(app)
-                            } else {
-                                onSelect(app.url)
-                            }
-                        } label: {
-                            AppPickerRow(app: app, compact: compact)
                         }
                     }
                     .padding(.vertical, 3)
