@@ -19,7 +19,7 @@ enum BreakdownKind {
 
 /// The "System" section of the panel: component temperatures, hardware usage
 /// and memory pressure, only the readings that matter, presented cleanly.
-/// Tapping CPU, GPU, Battery or Memory expands the top consumers of that resource.
+/// Tapping CPU, GPU or Memory expands the top consumers of that resource.
 struct SystemSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var monitor = SystemMonitor.shared
@@ -36,13 +36,10 @@ struct SystemSection: View {
     @AppStorage(DefaultsKey.monitorGraphCPU) private var graphCPU = true
     @AppStorage(DefaultsKey.monitorGraphGPU) private var graphGPU = true
     @AppStorage(DefaultsKey.monitorGraphMemory) private var graphMemory = true
-    @AppStorage(DefaultsKey.monitorGraphBattery) private var graphBattery = true
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
-    @AppStorage(DefaultsKey.menuBarPeripheralBattery) private var menuBarPeripheralBattery = false
     @AppStorage(DefaultsKey.monitorSysTemps) private var sysTemps = true
     @AppStorage(DefaultsKey.monitorSysCPU) private var sysCPU = true
     @AppStorage(DefaultsKey.monitorSysGPU) private var sysGPU = true
-    @AppStorage(DefaultsKey.monitorSysBattery) private var sysBattery = true
     @AppStorage(DefaultsKey.monitorSysMemory) private var sysMemory = true
     @AppStorage(DefaultsKey.monitorSysAlerts) private var sysAlerts = true
     @AppStorage(DefaultsKey.monitorSysUptime) private var sysUptime = true
@@ -97,14 +94,9 @@ struct SystemSection: View {
     private var cpuAvailable: Bool { AppFeature.monitorCPU.isAvailable }
     private var gpuAvailable: Bool { AppFeature.monitorGPU.isAvailable }
     private var memoryAvailable: Bool { AppFeature.monitorMemory.isAvailable }
-    private var powerAvailable: Bool { AppFeature.monitorPower.isAvailable }
-    private var batteryAvailable: Bool {
-        powerAvailable && PowerSampler.hasInternalBattery
-    }
 
     private var usageVisible: Bool {
         (sysCPU && cpuAvailable) || (sysGPU && gpuAvailable)
-            || (sysBattery && batteryAvailable && monitor.snapshot.power?.chargePercent != nil)
     }
 
     private var visibleBlocks: [Block] {
@@ -117,7 +109,7 @@ struct SystemSection: View {
 
     private func isBlockAvailable(_ block: Block) -> Bool {
         switch block {
-        case .temps, .usage: return cpuAvailable || gpuAvailable || batteryAvailable
+        case .temps, .usage: return cpuAvailable || gpuAvailable
         case .memory: return memoryAvailable
         case .alerts, .uptime: return true
         }
@@ -154,7 +146,6 @@ struct SystemSection: View {
         sysTemps = true
         sysCPU = true
         sysGPU = true
-        sysBattery = true
         sysMemory = true
         sysAlerts = true
         sysUptime = true
@@ -280,14 +271,9 @@ struct SystemSection: View {
                         temperatureCell(icon: "memorychip", label: l10n.s.gpuLabel,
                                         value: monitor.snapshot.gpuTemperature)
                     }
-                    if batteryAvailable {
-                        temperatureCell(icon: "battery.100", label: l10n.s.batteryLabel,
-                                        value: monitor.snapshot.batteryTemperature)
-                    }
                 }
                 if monitor.snapshot.cpuTemperature == nil,
-                   monitor.snapshot.gpuTemperature == nil,
-                   monitor.snapshot.batteryTemperature == nil {
+                   monitor.snapshot.gpuTemperature == nil {
                     Text(l10n.s.monitorUnavailable)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
@@ -476,11 +462,7 @@ struct SystemSection: View {
         .panelKeyboardRow(PanelRowID(.system, "usage-energy"), actions: breakdownActions(.energy))
     }
 
-    private func chargeTint(_ charge: Int) -> Color {
-        if charge < 20 { return PanelMetricColor.red(for: colorScheme) }
-        if charge < 40 { return PanelMetricColor.yellow(for: colorScheme) }
-        return PanelMetricColor.green(for: colorScheme)
-    }
+    // MARK: Uptime
 
     @ViewBuilder
     private func uptimeRow(editing: Bool) -> some View {
@@ -716,7 +698,7 @@ struct SystemSection: View {
 }
 
 /// Thin capacity bar for CPU/GPU usage.
-private struct UsageBar: View {
+struct UsageBar: View {
     @Environment(\.colorScheme) private var colorScheme
     let fraction: Double
     var tint: Color? = nil

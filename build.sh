@@ -87,13 +87,16 @@ legacy_identity_installed() {
     return $signed
 }
 
-# The Developer build exists for iterative local work, where an ad-hoc
-# signature is a trap: macOS ties Accessibility and Screen Recording grants to
-# the exact binary hash, so every rebuild orphans them while System Settings
-# keeps showing them as granted, and no new prompt ever appears. When no
-# identity is installed, create the stable local one up front instead of
-# falling through to ad-hoc — setup-signing.sh is free, offline and idempotent.
-if (( DEV )) && [[ -z "$(developer_id_identity)" ]] \
+# Any build that lands in /Applications needs a stable signature, not just the
+# Developer one: macOS ties Accessibility and Screen Recording grants to the
+# exact binary hash, so an ad-hoc rebuild orphans them while System Settings
+# keeps showing them as granted, and no new prompt ever appears. A plain
+# --install strands them under the released bundle id, on the app the user
+# actually relies on. When no identity is installed, create the stable local one
+# up front instead of falling through to ad-hoc — setup-signing.sh is free,
+# offline and idempotent. Gating on the install rather than the variant keeps
+# this off CI, where neither ci.yml nor release.yml passes --install.
+if (( DEV || INSTALL )) && [[ -z "$(developer_id_identity)" ]] \
     && ! legacy_identity_installed; then
     echo "▸ No signing identity installed; creating the stable local one…"
     if ! ./Tools/setup-signing.sh; then
@@ -287,10 +290,13 @@ if (( TEST )); then
         Sources/Vorssaint/Services/Recorder/RecorderTypingTrack.swift \
         Sources/Vorssaint/Services/Recorder/RecorderTimeline.swift \
         Sources/Vorssaint/Services/Recorder/RecorderTextOverlay.swift \
+        Sources/Vorssaint/Services/Recorder/RecorderImageOverlay.swift \
         Sources/Vorssaint/Services/Recorder/RecorderBlurRegion.swift \
         Sources/Vorssaint/Services/Recorder/RecorderEditDocument.swift \
         Sources/Vorssaint/Core/AppInfo.swift \
         Sources/Vorssaint/Core/GlobalShortcut.swift \
+        Sources/Vorssaint/Core/SymbolicHotKeys.swift \
+        Sources/Vorssaint/Services/SystemShortcutTakeoverSupport.swift \
         Sources/Vorssaint/Core/Localization.swift \
         Sources/Vorssaint/Core/Localizations/Strings+*.swift \
         Sources/Vorssaint/Core/FeatureStrings.swift \
@@ -310,6 +316,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/DockPreview/DockPreviewSupport.swift \
         Sources/Vorssaint/Services/Homebrew/HomebrewSupport.swift \
         Sources/Vorssaint/Services/AppUpdates/AppUpdatesSupport.swift \
+        Sources/Vorssaint/Services/AppUpdates/AppUpdateFeedSupport.swift \
         Sources/Vorssaint/Core/AppUpdateStrings.swift \
         Sources/Vorssaint/Core/DiskImageInstallerStrings.swift \
         Sources/Vorssaint/Services/DiskImageInstaller/DiskImageInstallerSupport.swift \
@@ -386,6 +393,7 @@ if (( TEST )); then
         Sources/Vorssaint/Services/ShellSupport.swift \
         Sources/Vorssaint/Services/Metrics/NetworkProcessSupport.swift \
         Sources/Vorssaint/Services/Metrics/NetworkSampler.swift \
+        Sources/Vorssaint/Services/Metrics/SpeedTest.swift \
         Sources/Vorssaint/Services/Metrics/PeripheralBatterySupport.swift \
         Sources/Vorssaint/Services/Metrics/DiskSupport.swift \
         Sources/Vorssaint/Services/Metrics/MonitorSamplingPolicy.swift \
@@ -407,6 +415,7 @@ if (( TEST )); then
         Sources/Vorssaint/UI/MenuPanel/PanelSectionID.swift \
         Sources/Vorssaint/UI/MenuPanel/PanelKeyboardNavigator.swift \
         Tests/MetricsTests.swift \
+        Tests/SpeedTestTests.swift \
         -o build/metrics-tests
     # `set -e` would end the script on a failing run before the sweep below.
     test_status=0

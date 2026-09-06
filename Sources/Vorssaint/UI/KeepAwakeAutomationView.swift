@@ -8,6 +8,7 @@ struct KeepAwakeAutomationEditor: View {
     @ObservedObject private var awake = KeepAwakeManager.shared
     @AppStorage(DefaultsKey.keepAwakeExternalDisplay) private var externalDisplay = false
     @AppStorage(DefaultsKey.keepAwakeConnectedToPower) private var connectedToPower = false
+    @AppStorage(DefaultsKey.keepAwakeRunningApps) private var runningApps = false
 
     var compact = false
     /// Non-nil only when hosted in the panel; see `KeepAwakeIconPicker`.
@@ -34,6 +35,23 @@ struct KeepAwakeAutomationEditor: View {
                     connectedToPower.toggle()
                     awake.automationPreferencesDidChange()
                 }
+                conditionTile(
+                    title: strings.runningAppsToggle,
+                    icon: "app.fill",
+                    selected: runningApps
+                ) {
+                    runningApps.toggle()
+                    awake.automationPreferencesDidChange()
+                }
+            }
+            if runningApps {
+                AppBundleList(title: strings.runningAppsListTitle,
+                              caption: strings.runningAppsListCaption,
+                              addTitle: strings.runningAppsAddButton,
+                              removeLabel: strings.runningAppsRemoveButton,
+                              bundleIDs: awake.runningAppBundleIDs,
+                              onAdd: { saveRunningApps(awake.runningAppBundleIDs + [$0]) },
+                              onRemove: { id in saveRunningApps(awake.runningAppBundleIDs.filter { $0 != id }) })
             }
         }
     }
