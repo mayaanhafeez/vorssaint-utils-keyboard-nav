@@ -124,17 +124,20 @@ struct PowerSection: View {
             if showCharge {
                 batteryUsageRow(editing: editing)
             } else if editing {
-                PanelHiddenItemRow(title: l10n.s.batteryCharge, systemImage: "battery.100", isVisible: $showCharge)
+                PanelHiddenItemRow(title: l10n.s.batteryCharge, systemImage: "battery.100",
+                                   isVisible: $showCharge,
+                                   keyboardRow: PanelRowID(.power, "hidden-charge"))
             }
         case .temperature:
             if showTemperature, let value = monitor.snapshot.batteryTemperature {
                 row(icon: "thermometer.medium", color: .secondary,
                     label: l10n.s.monitorShowBatteryTemperature,
                     value: MetricFormat.temperature(value, unit: TemperatureUnit(rawValue: temperatureUnit) ?? .celsius),
-                    visible: $showTemperature, editing: editing)
+                    visible: $showTemperature, editing: editing, block: .temperature)
             } else if editing && !showTemperature {
                 PanelHiddenItemRow(title: l10n.s.monitorShowBatteryTemperature,
-                                   systemImage: "thermometer.medium", isVisible: $showTemperature)
+                                   systemImage: "thermometer.medium", isVisible: $showTemperature,
+                                   keyboardRow: PanelRowID(.power, "hidden-temperature"))
             }
         case .peripherals:
             peripheralBatteryRows
@@ -238,7 +241,8 @@ struct PowerSection: View {
                         .monospacedDigit()
                         .frame(width: 38, alignment: .trailing)
                     if editing {
-                        PanelInlineHideButton(isVisible: $showCharge)
+                        PanelInlineHideButton(isVisible: $showCharge,
+                                              keyboardRow: PanelRowID(.power, "hide-charge"))
                     }
                 }
                 if graphBattery, monitor.snapshot.batteryHistory.count >= 2 {
@@ -285,6 +289,16 @@ struct PowerSection: View {
     @ViewBuilder
     private func hiddenRow(for block: Block) -> some View {
         switch block {
+        case .charge:
+            PanelHiddenItemRow(title: l10n.s.batteryCharge,
+                               systemImage: "battery.100",
+                               isVisible: $showCharge,
+                               keyboardRow: PanelRowID(.power, "hidden-charge"))
+        case .temperature:
+            PanelHiddenItemRow(title: l10n.s.monitorShowBatteryTemperature,
+                               systemImage: "thermometer.medium",
+                               isVisible: $showTemperature,
+                               keyboardRow: PanelRowID(.power, "hidden-temperature"))
         case .system:
             PanelHiddenItemRow(title: l10n.s.powerSystem,
                                systemImage: "bolt.fill",
@@ -310,6 +324,18 @@ struct PowerSection: View {
                                systemImage: "clock",
                                isVisible: $pwrTimeRemaining,
                                keyboardRow: PanelRowID(.power, "hidden-remaining"))
+        case .peripherals:
+            EmptyView()
+        }
+    }
+
+    private func peripheralIcon(for kind: PeripheralBatteryKind) -> String {
+        switch kind {
+        case .keyboard: return "keyboard"
+        case .mouse: return "computermouse"
+        case .trackpad: return "rectangle.and.hand.point.up.left"
+        case .audio: return "headphones"
+        case .device: return "battery.100"
         }
     }
 

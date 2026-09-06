@@ -36,6 +36,7 @@ struct KeepAwakeAutomationEditor: View {
                     awake.automationPreferencesDidChange()
                 }
                 conditionTile(
+                    id: "runningApps",
                     title: strings.runningAppsToggle,
                     icon: "app.fill",
                     selected: runningApps
@@ -58,6 +59,12 @@ struct KeepAwakeAutomationEditor: View {
 
     private var strings: KeepAwakeAutomationStrings {
         FeatureStrings.keepAwakeAutomation(l10n.language)
+    }
+
+    private func saveRunningApps(_ bundleIDs: [String]) {
+        let sanitized = Defaults.sanitizedBundleIdentifierList(bundleIDs)
+        UserDefaults.standard.set(sanitized, forKey: DefaultsKey.keepAwakeRunningAppBundleIDs)
+        awake.automationPreferencesDidChange()
     }
 
     private func conditionTile(id: String,
